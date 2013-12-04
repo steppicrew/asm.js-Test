@@ -86,6 +86,7 @@ function Mandelbrot( stdlib, foreign, heap ) {
 };
 
 
+
 L.MandelbrotSet = L.TileLayer.Canvas.extend({
     tileSize: 256,
     data: undefined,
@@ -103,6 +104,14 @@ L.MandelbrotSet = L.TileLayer.Canvas.extend({
         var data= new ArrayBuffer(this.tileSize * this.tileSize * 4 * 1024);
         this.mandel= Mandelbrot(window, {}, data);
         this.data= new Uint8Array(data);
+
+        var profileTimer;
+        this.on('loading', function() {
+            profileTimer= new Date();
+        })
+        this.on('load', function() {
+            document.getElementById('profiler').innerHTML= (new Date() - profileTimer) + ' ms<br />';
+        })
     },
 
     _draw: function (ctx) {
@@ -120,8 +129,8 @@ L.MandelbrotSet = L.TileLayer.Canvas.extend({
 var attr = 'Adapted from a <a target="_blank" href="http://polymaps.org/ex/mandelbrot.html">polymaps sample</a>'
 var map = L.map('map');
 map.attributionControl.addAttribution(attr);
-map.addLayer(new L.MandelbrotSet());
 map.setView(new L.LatLng(0, 0), 2);
+map.addLayer(new L.MandelbrotSet());
 
 /*
 var canvas= document.getElementById('c');

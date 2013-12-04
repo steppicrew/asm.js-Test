@@ -10,6 +10,14 @@ L.MandelbrotSet = L.TileLayer.Canvas.extend({
             };
             this._draw(ctx);
         };
+
+        var profileTimer;
+        this.on('loading', function() {
+            profileTimer= new Date();
+        })
+        this.on('load', function() {
+            document.getElementById('profiler').innerHTML= (new Date() - profileTimer) + ' ms<br />';
+        })
     },
 
     _data: function(ctx) {
