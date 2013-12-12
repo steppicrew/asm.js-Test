@@ -1,4 +1,4 @@
-isAsmJs= true;
+isAsmJs= false;
 
 /*
 function Test( stdlib, foreign, heap ) {
@@ -15,16 +15,14 @@ function Test( stdlib, foreign, heap ) {
 */
   
 function Raytracer( stdlib, foreign, heap ) {
-    "use asm";
+//    "use asm";
 
     var sqrt = stdlib.Math.sqrt;
     var imul = stdlib.Math.imul;
     var pow = stdlib.Math.pow;
     
-    var inHeap  = new stdlib.Int32Array(heap);
-    var outHeap = new stdlib.Uint8Array(heap);
-
-//    var heap8= heap;
+    // var heap8 = new stdlib.Uint8Array(heap);
+    var heap8= heap;
 
     var w= 0;
     var inx_spheres= 0;
@@ -120,12 +118,12 @@ function Raytracer( stdlib, foreign, heap ) {
         // q points to the 2nd element of the sphere because of q++; +6 skips to next
         // sphere.
 
-        for ( ; r = inHeap[((inx_spheres + q) << 2) >> 2]|0; q= (q + 9)|0) {
+        for ( ; r = heap8[inx_spheres + (q|0)]|0; q= (q|0) + 9) {  
             // Compute quadratic equation coefficients K1, K2, K3
 
-            Jx = +(Bx - +(inHeap[((inx_spheres + q + 1) << 2) >> 2] >> 0));  // origin - center
-            Jy = +(By - +(inHeap[((inx_spheres + q + 2) << 2) >> 2] >> 0));  // origin - center
-            Jz = +(Bz - +(inHeap[((inx_spheres + q + 3) << 2) >> 2] >> 0));  // origin - center
+            Jx = +(Bx - +(heap8[inx_spheres + q + (1|0)] >> 0));  // origin - center
+            Jy = +(By - +(heap8[inx_spheres + q + (2|0)] >> 0));  // origin - center
+            Jz = +(Bz - +(heap8[inx_spheres + q + (3|0)] >> 0));  // origin - center
             
             a =  2.0 * +dot(Dx, Dy, Dz, Dx, Dy, Dz);  // 2*K1
             b = -2.0 * +dot(Jx, Jy, Jz, Dx, Dy, Dz);  // -K2
@@ -134,17 +132,16 @@ function Raytracer( stdlib, foreign, heap ) {
 
             // Compute sqrt(Discriminant) = sqrt(K2*K2 - 4*K1*K3), go ahead if there are
             // solutions.
-            d = +sqrt(+b * +b - 2.0 * +a * (+dot(Jx, Jy, Jz, Jx, Jy, Jz) - +((imul(r, r)|0) >> 0)))
+            d = +sqrt(b * b - 2.0 * a * (+dot(Jx, Jy, Jz, Jx, Jy, Jz) - +((r|0) * (r|0))))
             if ( d != 0.0 ) {
                 // Compute the two solutions.
-                for (e = 2; e; e = (e - 1)|0) {
+                for (e = 2; e; e = (e|0) - 1, d = -d) {
                     f = (b - d) / a;  // f = (-K2 - d) / 2*K1
 // console.log("f", b, b * b, 2.0 * a * +dot(Jx, Jy, Jz, Jx, Jy, Jz), (r|0 * r), "e", e);
                     if ( t_min < f ) if ( f < t_max ) if ( f < t ) { 
-                        v = ((q|0) + 1)|0;
+                        v = (q|0) + 1;
                         t = f;
                     }
-                    d= - +d;
                 }
             }
         }
@@ -158,48 +155,12 @@ function Raytracer( stdlib, foreign, heap ) {
     // If depth > 0, trace recursive reflection rays.
     // Returns the value of the current color channel as "seen" through the ray.
     function trace_ray(Bx, By, Bz, Dx, Dy, Dz, t_min, t_max, depth) {
-        Bx= +Bx;
-        By= +By;
-        Bz= +Bz;
-        Dx= +Dx;
-        Dy= +Dy;
-        Dz= +Dz;
-        t_min= +t_min;
-        t_max= +t_max;
-        depth= depth|0;
 
-        var s= 0;
-        var Nx= 0.0;
-        var Ny= 0.0;
-        var Nz= 0.0;
-        var Xx= 0.0;
-        var Xy= 0.0;
-        var Xz= 0.0;
-        var n= 0.0;
-        var i= 0.0;
-        var l= 0;
-        var u= 0;
-        var k= 0.0;
-        var Lx= 0.0;
-        var Ly= 0.0;
-        var Lz= 0.0;
-        var Mx= 0.0;
-        var My= 0.0;
-        var Mz= 0.0;
-
-        var cc= 0;
-        var mf= 0.0;
-        var local_color= 0.0;
-        var ref= 0.0;
-        var Rx= 0.0;
-        var Ry= 0.0;
-        var Rz= 0.0;
-        var rf = 0.0;
-
-        var tr= 0;
+        var s, Nx, Ny, Nz, Xx, Xy, Xz, n, i, l, u, k, Lx, Ly, Lz, Mx, My, Mz;
+// console.log(depth, Dx, Dy, Dz);
 
         // Find nearest hit; if no hit, return black.
-        if (!(s = closest_intersection(Bx, By, Bz, Dx, Dy, Dz, t_min, t_max)|0)) {
+        if (!(s = closest_intersection(Bx, By, Bz, Dx, Dy, Dz, t_min, t_max))) {
             return 0;
         }
 
@@ -209,29 +170,29 @@ function Raytracer( stdlib, foreign, heap ) {
         Xx = Bx + Dx * t;
         Xy = By + Dy * t;
         Xz = Bz + Dz * t;
-
-        Nx = Xx - +(inHeap[((inx_spheres + s    ) << 2) >> 2] >> 0);
-        Ny = Xy - +(inHeap[((inx_spheres + s + 1) << 2) >> 2] >> 0);
-        Nz = Xz - +(inHeap[((inx_spheres + s + 2) << 2) >> 2] >> 0);
+        
+        Nx = Xx - heap8[inx_spheres + s];
+        Ny = Xy - heap8[inx_spheres + s + 1];
+        Nz = Xz - heap8[inx_spheres + s + 2];
 
         // Instead of normalizing N, we divide by its length when appropriate. Most of
         // the time N appears twice, so we precompute its squared length.
-        n = +dot(Nx, Ny, Nz, Nx, Ny, Nz);
+        n = dot(Nx, Ny, Nz, Nx, Ny, Nz);
 
         // Start with ambient light only
         i = ambient_light;
 
         // For each light
-        for (l = 0; u = inHeap[((inx_lights + l) << 2) >> 2]|0; l = (l + 4)|0) { // Get intensity and check for end of array
+        for (l = 0; u = heap8[inx_lights + l]; l = l + 4) { // Get intensity and check for end of array
 
             // Compute vector from intersection to light (L = lights[l++] - X) and
             // k = <N,L> (reused below)
             // L = A_minus_Bk(lights[l++], Xx, Xy, Xz, 1);
-            Lx = +(inHeap[((inx_lights + l + 1) << 2) >> 2] >> 0) - Xx;
-            Ly = +(inHeap[((inx_lights + l + 2) << 2) >> 2] >> 0) - Xy;
-            Lz = +(inHeap[((inx_lights + l + 3) << 2) >> 2] >> 0) - Xz;
+            Lx = heap8[inx_lights + l + 1] - Xx;
+            Ly = heap8[inx_lights + l + 2] - Xy;
+            Lz = heap8[inx_lights + l + 3] - Xz;
 
-            k = +dot(Nx, Ny, Nz, Lx, Ly, Lz);
+            k = dot(Nx, Ny, Nz, Lx, Ly, Lz);
 
             // Add to lighting
 
@@ -254,19 +215,19 @@ function Raytracer( stdlib, foreign, heap ) {
             //
             // If the resultant intensity is negative, treat it as 0 (ignore it).
 
-            cc= closest_intersection(Xx, Xy, Xz, Lx, Ly, Lz, +(1.0 / +(w >> 0)), 1.0)|0;
+            var cc= closest_intersection(Xx, Xy, Xz, Lx, Ly, Lz, 1 / w, 1);
 
             // M = A_minus_Bk(Lx, Ly, Lz, Nx, Ny, Nz, 2*k/n), D) 
-            mf= 2.0 * k / n;
+            var mf= 2 * k / n;
             Mx = Lx - Nx * mf;
             My = Ly - Ny * mf;
             Mz = Lz - Nz * mf;
-
-            i= i + +(u >> 0) * 
-                +((!cc) >> 0) * (
-                    +max(0.0, k / +sqrt(+dot(Lx, Ly, Lz, Lx, Ly, Lz) * n))
-                    + +max(0.0, +pow(+dot(Mx, My, Mz, Dx, Dy, Dz)
-                        / +sqrt(+dot(Mx, My, Mz, Mx, My, Mz) * +dot(Dx, Dy, Dz, Dx, Dy, Dz)), +(inHeap[((inx_spheres + s + 6) << 2) >> 2] >> 0)))
+            
+            i += u * 
+                !cc * (
+                    max(0, k / sqrt(dot(Lx, Ly, Lz, Lx, Ly, Lz) * n))
+                    + max(0, pow(dot(Mx, My, Mz, Dx, Dy, Dz) 
+                        / sqrt(dot(Mx, My, Mz, Mx, My, Mz) * dot(Dx, Dy, Dz, Dx, Dy, Dz)), heap8[inx_spheres + s + 6]))
                 );
         }
 
@@ -277,79 +238,67 @@ function Raytracer( stdlib, foreign, heap ) {
         // 
         // spheres[s] = sphere center, so spheres[s+c] = color channel
         // (c = [1..3] because ++c below)
-        local_color = +(inHeap[((inx_spheres + s + c + 2) << 2) >> 2] >> 0) * i * 2.8;
+        var local_color = heap8[inx_spheres + s + c + 2] * i * 2.8;
 
         // If the recursion limit hasn't been hit yet, trace reflection rays.
         // N = normal (non-normalized - two divs by |N| = div by <N,N>
         // D = -view
         // R = 2*N*<N,V>/<N,N> - V = 2*N*<N,-D>/<N,N> + D = D - N*(2*<N,D>/<N,N>)
+        var ref = heap8[inx_spheres + s + 7] / 9;
+        
+        if ( depth-- ) {
 
-        if ( depth ) {
-
-            ref = +(inHeap[((inx_spheres + s + 7) << 2) >> 2] >> 0) / 9.0;
-            rf = 2.0 * +dot(Nx, Ny, Nz, Dx, Dy, Dz) / n;
+            var Rx, Ry, Rz;
+            var rf = 2 * dot(Nx, Ny, Nz, Dx, Dy, Dz) / n;
             Rx= Dx - Nx * rf;
             Ry= Dy - Ny * rf;
             Rz= Dz - Nz * rf;
 
-            tr= trace_ray(Xx, Xy, Xz, Rx, Ry, Rz, +(1.0 / +(w >> 0)), +(w >> 0), (depth - 1)|0)|0;
-
-            return ~~(
-                +(tr >> 0)
-                * ref
-                + local_color * (1.0 - ref)
-            );
+            return trace_ray(Xx, Xy, Xz, Rx, Ry, Rz, 1/w, w, depth) * ref
+                + local_color * (1 - ref);
         }
-
-        return ~~(local_color)|0;
+                
+        return local_color;
     }
-
+    
     function run( heapIndex ) {
         heapIndex= heapIndex|0;
-
-        var y= 0;
-        var h= 0;
-        var x= 0;
-        var out_start= 0;
-        var out_idx= 0;
-
+    
         // Tiny Raytracer (C) Gabriel Gambetta 2013
         // ----------------------------------------
         //
         //  Configuration and scene
         //
         // Size of the canvas. w is also reused as a "big constant" / "+infinity"
-
-        w = inHeap[(inHeap[(heapIndex << 2) >> 2] << 2) >> 2]|0;
+        
+        w = heap8[heap8[heapIndex]|0]|0;
 
         // Sphere: radius, [cx,  cy,  cz], R,  G,  B, specular exponent, reflectiveness 
         // R, G, B in [0, 9], reflectiveness in [0..9].
-        inx_spheres= inHeap[((heapIndex + 1) << 2) >> 2]|0;
+        inx_spheres= heap8[(heapIndex|0) + 1]|0;
 
         // Ambient light.
-        ambient_light= +(inHeap[((heapIndex + 2) << 2) >> 2] >> 0);
+        ambient_light = heap8[heap8[(heapIndex|0) + 2]|0]|0;
 
         // Point lights: intensity, [x,  y,  z]
         // Intensities should add to 10, including ambient.
-        inx_lights= inHeap[((heapIndex + 3) << 2) >> 2]|0;
+        inx_lights = heap8[(heapIndex|0) + 3]|0;
 
-        inx_output= inHeap[((heapIndex + 4) << 2) >> 2]|0;
+        inx_output= heap8[(heapIndex|0) + 4]|0;
 
-        out_start= (inx_output + 1) << 2;
-        out_idx = out_start;
+        var y, h, x;
 
+        var out_idx = inx_output + 1;
 
-        h= w >> 1;
         // For each y; also compute h=w/2 without paying an extra ";"
-        for (y= h; (y|0) > (-h >> 0); ) {
-            y= (y - 1)|0;
+        for (y = h=w/2; y-- > -h;) {
 
             // For each x
-            for (x= -h >> 0; (x >> 0) < (h >> 0);) {
-                x= (x + 1)|0;
+            for (x = -h; x++ < h;) {
+
                 // One pass per color channel (!). This way we don't have to deal with
                 // "colors".
-                for (c= 1; (c >> 0) < 4; c= (c + 1)|0) {
+                for (c = 0; ++c < 4;) {
                     // Camera is at (0, 1, 0)
                     //
                     // Ray direction is (x*vw/cw, y*vh/ch, 1) where vw = viewport width, 
@@ -361,17 +310,17 @@ function Raytracer( stdlib, foreign, heap ) {
                     // 2 is a good recursion depth to appreciate the reflections without
                     // slowing things down too much
                     //
-                    outHeap[out_idx] = trace_ray(0.0, 1.0, 0.0, +(x >> 0) / +(w >> 0), +(y >> 0) / +(w >> 0), 1.0, 1.0, +(w >> 0), 2)|0;
-                    out_idx= (out_idx + 1)|0;
+// window.ct= window.ct ? window.ct + 1 : 1; console.log(window.ct, c, x, y, w, h);
+                    heap8[out_idx++] = trace_ray(0, 1, 0, x / w, y / w, 1, 1, w, 2);
                 }
-                outHeap[out_idx] = 255; // Opaque alpha
-                out_idx= (out_idx + 1)|0;
+                heap8[out_idx++] = 255; // Opaque alpha
             }
         }
 
-        inHeap[(inx_output << 2) >> 2]= (out_idx - out_start)|0;
-
-        // console.log(inHeap[inx_output], heap[inx_output]);
+        heap8[inx_output]= out_idx - inx_output - 1;
+        heap[inx_output]= out_idx - inx_output - 1;
+        
+        // console.log(heap8[inx_output], heap[inx_output]);
     };
 
     return {

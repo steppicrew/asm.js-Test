@@ -8,13 +8,10 @@ function addHeap( heap, index, data ) {
 }
 
 function run2a( stdlib ) {
-    var date= new Date();
-    console.log("Start");
-
-    var heap= new ArrayBuffer(128 * 1024);
+    var heap= isAsmJs ? new ArrayBuffer(128 * 1024) : [];
     // var heap= new Uint8Array(128 * 1024);
-    var heap8= heap;
-    // var heap8 = new stdlib.Uint8Array(heap);
+//    var heap8= heap;
+    var inHeap= isAsmJs ? new stdlib.Int32Array(heap) : heap;
 
     var heapIndex= [ 5 ];
 
@@ -24,34 +21,34 @@ function run2a( stdlib ) {
     //  Configuration and scene
     //
 
-    var w= 9;
+    var w= 100;
 
     // Size of the canvas. w is also reused as a "big constant" / "+infinity"
-    heap8[0]= addHeap(heap8, heapIndex, [ w ]);
+    inHeap[0]= addHeap(inHeap, heapIndex, [ w ]);
 
     // Sphere: radius, [cx,  cy,  cz], R,  G,  B, specular exponent, reflectiveness 
     // R, G, B in [0, 9], reflectiveness in [0..9].
-    heap8[1] = addHeap(heap8, heapIndex, [
+    inHeap[1] = addHeap(inHeap, heapIndex, [
         w,   0, -w, 0,  9, 9, 0,  w,  2,  // Yellow sphere
-//        1,   0,  0, 3,  9, 0, 0,  w,  3,  // Red sphere
-//        1,  -2,  1, 4,  0, 9, 0,  9,  4,  // Green sphere
-//        1,   2,  1, 4,  0, 0, 9,  w,  5,  // Blue sphere
+        1,   0,  0, 3,  9, 0, 0,  w,  3,  // Red sphere
+        1,  -2,  1, 4,  0, 9, 0,  9,  4,  // Green sphere
+        1,   2,  1, 4,  0, 0, 9,  w,  5,  // Blue sphere
         0
     ]);
 
     // Ambient light.
-    heap8[2] = addHeap(heap8, heapIndex, [ 2 ]);
+    inHeap[2] = addHeap(inHeap, heapIndex, [ 2 ]);
 
     // Point lights: intensity, [x,  y,  z]
     // Intensities should add to 10, including ambient.
-    heap8[3] = addHeap(heap8, heapIndex, [
+    inHeap[3] = addHeap(inHeap, heapIndex, [
         8,  2, 2, 0,
         0
     ]);
 
-    heap8[4] = addHeap(heap8, heapIndex, []);
+    inHeap[4] = addHeap(inHeap, heapIndex, []);
 
-    var raytracer= Raytracer(window, {}, heap8);
+    var raytracer= Raytracer(window, {}, heap);
     raytracer.run(0);
 
     // Get to the raw pixel data.
@@ -62,16 +59,24 @@ function run2a( stdlib ) {
 
     var image_data= context2d.createImageData(w, w);
     var image_data_data= image_data.data;
-    var start= heap8[4];
- console.log(start);
-    var i= heap8[start];
-    while ( --i >= 0 ) image_data_data[i] = heap8[start + i + 1];
+    var start= inHeap[4];
+
+    var i= inHeap[start];
+console.log('start', start, i)
+    var outHeap = isAsmJs ? new stdlib.Uint8Array(heap, (start + 1) * Int32Array.BYTES_PER_ELEMENT ) : heap.slice(start + 1);
+
+console.log('length:', i)
+    while ( --i >= 0 ) image_data_data[i] = outHeap[i];
 
     context2d.putImageData(image_data, 0, 0);
 
-    console.log("End:", new Date() - date);
 }
 
 function run2() {
+    var date= new Date();
+    console.log("Start");
+
     run2a(window);
+
+    console.log("End:", new Date() - date);
 }
